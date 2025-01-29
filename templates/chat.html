@@ -1,0 +1,1526 @@
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; background-color: #f5f5f5; }
+        .user-list { width: 25%; background: #007bff; color: white; padding: 10px; box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); overflow-y: auto; }
+        .user { padding: 10px; cursor: pointer; }
+        .user:hover { background: #0056b3; }
+        .chat-container { flex: 1; display: flex; flex-direction: column; }
+        .date-stamp { text-align: center; margin: 10px 0; font-weight: bold; color: gray; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; background: white; }
+        .message { margin-bottom: 10px; position: relative; }
+        .message.sent { text-align: right; }
+        .message.received { text-align: left; }
+        .message-content { display: inline-block; padding: 10px; background: #f0f0f0; border-radius: 5px; position: relative; }
+        .message.sent .message-content { background: #007bff; color: white; }
+        .timestamp { font-size: 10px; color: gray; position: absolute; bottom: -15px; right: 0; }
+        .status { font-size: 12px; margin-left: 5px; }
+        .status.single { color: gray; }
+        .status.delivered { color: green; }
+        .status.read { color: blue; }
+        .input-container { display: flex; padding: 10px; background: #f0f0f0; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-right: 10px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="user-list">
+        <h3>Users</h3>
+        {% for user in users %}
+        <div class="user" onclick="startChat('{{ user.username }}')">{{ user.username }}</div>
+        {% endfor %}
+    </div>
+    <div class="chat-container">
+        <div class="messages" id="messages"></div>
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = '{{ session["username"] }}';
+        let currentChatUser = null;
+        let lastDate = null;
+
+        function formatDate(date) {
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+
+            if (date.toDateString() === today.toDateString()) return 'Today';
+            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+            return date.toLocaleDateString('en-GB');
+        }
+
+        function startChat(user) {
+            currentChatUser = user;
+            document.getElementById('messages').innerHTML = '';
+            lastDate = null;
+            fetch(`/get_conversation?receiver=${user}`)
+                .then(res => res.json())
+                .then(data => {
+                    const messagesContainer = document.getElementById('messages');
+                    data.forEach(msg => {
+                        const msgDate = new Date(msg.timestamp);
+                        const formattedDate = formatDate(msgDate);
+
+                        if (lastDate !== formattedDate) {
+                            const dateElement = document.createElement('div');
+                            dateElement.className = 'date-stamp';
+                            dateElement.textContent = formattedDate;
+                            messagesContainer.appendChild(dateElement);
+                            lastDate = formattedDate;
+                        }
+
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+
+                        const contentElement = document.createElement('span');
+                        contentElement.className = 'message-content';
+                        contentElement.textContent = msg.content;
+
+                        const timestampElement = document.createElement('sub');
+                        timestampElement.className = 'timestamp';
+                        timestampElement.textContent = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        contentElement.appendChild(timestampElement);
+
+                        if (msg.sender === currentUser) {
+                            const statusElement = document.createElement('span');
+                            statusElement.className = 'status';
+
+                            // Mocked status for illustration (update with real data as needed)
+                            if (msg.status === 'sent') {
+                                statusElement.classList.add('single');
+                                statusElement.textContent = '✔';
+                            } else if (msg.status === 'delivered') {
+                                statusElement.classList.add('delivered');
+                                statusElement.textContent = '✔✔';
+                            } else if (msg.status === 'read') {
+                                statusElement.classList.add('read');
+                                statusElement.textContent = '✔✔';
+                            }
+
+                            contentElement.appendChild(statusElement);
+                        }
+
+                        messageElement.appendChild(contentElement);
+                        messagesContainer.appendChild(messageElement);
+                    });
+                });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value;
+            if (!message || !currentChatUser) return;
+
+            fetch('/send_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiver: currentChatUser, message })
+            }).then(() => {
+                const messagesContainer = document.getElementById('messages');
+
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message sent';
+
+                const contentElement = document.createElement('span');
+                contentElement.className = 'message-content';
+                contentElement.textContent = message;
+
+                const timestampElement = document.createElement('sub');
+                timestampElement.className = 'timestamp';
+                timestampElement.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                const statusElement = document.createElement('span');
+                statusElement.className = 'status single';
+                statusElement.textContent = '✔';
+
+                contentElement.appendChild(timestampElement);
+                contentElement.appendChild(statusElement);
+                messageElement.appendChild(contentElement);
+                messagesContainer.appendChild(messageElement);
+
+                messageInput.value = '';
+            });
+        }
+    </script>
+</body>
+</html> -->
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; background-color: #f5f5f5; }
+        .user-list { width: 25%; background: #007bff; color: white; padding: 10px; box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); overflow-y: auto; }
+        .user { padding: 10px; cursor: pointer; }
+        .user:hover { background: #0056b3; }
+        .chat-container { flex: 1; display: flex; flex-direction: column; }
+        .chat-header { display: flex; align-items: center; background: #007bff; color: white; padding: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+        .chat-header img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer; }
+        .chat-header img:hover { transform: scale(1.1); transition: 0.3s; }
+        .chat-header-name { flex: 1; font-size: 20px; font-weight: bold; }
+        .upload-container { display: none; position: absolute; top: 50px; left: 10px; background: white; box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 5px; }
+        .upload-container img { width: 100%; height: auto; }
+        .upload-container button { margin-top: 5px; display: block; width: 100%; background: #007bff; color: white; border: none; border-radius: 3px; padding: 5px; cursor: pointer; }
+        .upload-container button:hover { background: #0056b3; }
+        .date-stamp { text-align: center; margin: 10px 0; font-weight: bold; color: gray; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; background: white; }
+        .message { margin-bottom: 10px; position: relative; display: flex; }
+        .message.sent { justify-content: flex-end; }
+        .message.received { justify-content: flex-start; }
+        .message-content { padding: 10px; background: #f0f0f0; border-radius: 5px; max-width: 70%; }
+        .message.sent .message-content { background: #007bff; color: white; }
+        .timestamp { font-size: 11px; color: #555; margin-top: 5px; text-align: right; }
+        .status { font-size: 12px; align-self: center; margin-left: 5px; }
+        .status.single { color: gray; }
+        .status.delivered { color: green; }
+        .status.read { color: blue; }
+        .input-container { display: flex; padding: 10px; background: #f0f0f0; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-right: 10px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="user-list">
+        <h3>Users</h3>
+        {% for user in users %}
+        <div class="user" onclick="startChat('{{ user.username }}')">{{ user.username }}</div>
+        {% endfor %}
+    </div>
+    <div class="chat-container">
+        <div class="chat-header">
+            <img src="default-profile.png" alt="Profile" id="profileImage" onclick="toggleUploadContainer()">
+            <span class="chat-header-name" id="chatHeaderName">Chat</span>
+            <div class="upload-container" id="uploadContainer">
+                <img src="default-profile.png" alt="Expanded Profile" id="expandedImage">
+                <input type="file" id="uploadInput" accept="image/*" onchange="changeProfileImage(event)">
+                <button onclick="document.getElementById('uploadInput').click()">Upload Image</button>
+            </div>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = '{{ session["username"] }}';
+        let currentChatUser = null;
+        let lastDate = null;
+
+        function formatDate(date) {
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+
+            if (date.toDateString() === today.toDateString()) return 'Today';
+            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+            return date.toLocaleDateString('en-GB');
+        }
+
+        function formatTimeIST(timestamp) {
+            const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' };
+            return new Date(timestamp).toLocaleTimeString('en-US', options);
+        }
+
+        function startChat(user) {
+            currentChatUser = user;
+            document.getElementById('chatHeaderName').textContent = user;
+            document.getElementById('messages').innerHTML = '';
+            lastDate = null;
+            fetch(`/get_conversation?receiver=${user}`)
+                .then(res => res.json())
+                .then(data => {
+                    const messagesContainer = document.getElementById('messages');
+                    data.forEach(msg => {
+                        const msgDate = new Date(msg.timestamp);
+                        const formattedDate = formatDate(msgDate);
+
+                        if (lastDate !== formattedDate) {
+                            const dateElement = document.createElement('div');
+                            dateElement.className = 'date-stamp';
+                            dateElement.textContent = formattedDate;
+                            messagesContainer.appendChild(dateElement);
+                            lastDate = formattedDate;
+                        }
+
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+
+                        const contentElement = document.createElement('span');
+                        contentElement.className = 'message-content';
+                        contentElement.textContent = msg.content;
+
+                        const timestampElement = document.createElement('div');
+                        timestampElement.className = 'timestamp';
+                        timestampElement.textContent = formatTimeIST(msg.timestamp);
+
+                        contentElement.appendChild(timestampElement);
+
+                        if (msg.sender === currentUser) {
+                            const statusElement = document.createElement('span');
+                            statusElement.className = 'status';
+
+                            // Mocked status for illustration (update with real data as needed)
+                            if (msg.status === 'sent') {
+                                statusElement.classList.add('single');
+                                statusElement.textContent = '✔';
+                            } else if (msg.status === 'delivered') {
+                                statusElement.classList.add('delivered');
+                                statusElement.textContent = '✔✔';
+                            } else if (msg.status === 'read') {
+                                statusElement.classList.add('read');
+                                statusElement.textContent = '✔✔';
+                            }
+
+                            messageElement.appendChild(statusElement);
+                        }
+
+                        messageElement.appendChild(contentElement);
+                        messagesContainer.appendChild(messageElement);
+                    });
+                });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value;
+            if (!message || !currentChatUser) return;
+
+            fetch('/send_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiver: currentChatUser, message })
+            }).then(() => {
+                const messagesContainer = document.getElementById('messages');
+
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message sent';
+
+                const contentElement = document.createElement('span');
+                contentElement.className = 'message-content';
+                contentElement.textContent = message;
+
+                const timestampElement = document.createElement('div');
+                timestampElement.className = 'timestamp';
+                timestampElement.textContent = formatTimeIST(Date.now());
+
+                contentElement.appendChild(timestampElement);
+
+                const statusElement = document.createElement('span');
+                statusElement.className = 'status single';
+                statusElement.textContent = '✔';
+
+                messageElement.appendChild(contentElement);
+                messageElement.appendChild(statusElement);
+
+                messagesContainer.appendChild(messageElement);
+                messageInput.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
+
+        function changeProfileImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const newImage = e.target.result;
+                    document.getElementById('profileImage').src = newImage;
+                    document.getElementById('expandedImage').src = newImage;
+
+                    // You may want to send the image to the server to save it for the user
+                    fetch('/update_profile_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: newImage })
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function toggleUploadContainer() {
+            const uploadContainer = document.getElementById('uploadContainer');
+            uploadContainer.style.display = uploadContainer.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
+ 
+
+
+
+
+  -->
+
+
+
+  <!-- <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+      <title>Chat</title>
+      <style>
+          :root {
+              --bg-color: rgba(255, 255, 255, 0.8);
+              --border-radius: 100px;
+              --font-family: Arial, sans-serif;
+              --header-height: 75px;
+              --left-chat-width: 225px;
+              --button-hover-width: 100px; /* Adjust to your desired width */
+          }
+  
+          body, html {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              font-family: var(--font-family);
+          }
+  
+          .background-blur {
+              background-image: url("C:/Users/Adil/Desktop/MyRA-main/By Design.jpg");
+              background-size: cover;
+              background-position: center;
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              filter: blur(10px);
+              z-index: -1;
+          }
+  
+          .header-container {
+              width: 100%;
+              height: var(--header-height);
+              background-color: var(--bg-color);
+              border-bottom-right-radius: var(--border-radius);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+              display: flex;
+              align-items: center;
+              justify-content: flex-end; /* Align items to the right */
+              position: fixed;
+              top: 0;
+              left: 0;
+              z-index: 2;
+              padding-right: 20px; /* Add padding to the right */
+          }
+  
+          .header-buttons {
+              display: flex;
+              gap: 10px;
+              margin-right: 20px; /* Add margin to the right */
+          }
+  
+          .header-button {
+              width: 40px;
+              height: 40px;
+              background-color: #fff;
+              border: none;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+              transition: width 0.3s, border-radius 0.3s, padding 0.3s, background-color 0.3s, color 0.3s;
+              cursor: pointer;
+              overflow: hidden;
+              position: relative;
+              color: #000; /* Default text color */
+          }
+  
+          .header-button:hover {
+              width: var(--button-hover-width);
+              border-radius: 20px;
+              padding: 0 20px;
+              background-color: blue; /* Change background color to blue on hover */
+              color: white; /* Change text color to white on hover */
+          }
+  
+          .header-button span {
+              font-size: 24px;
+              transition: opacity 0.3s;
+          }
+  
+          .header-button:hover span {
+              opacity: 0; /* Hide the icon on hover */
+          }
+  
+          .header-button::after {
+              content: attr(data-hover);
+              position: absolute;
+              left: 50%;
+              transform: translateX(-50%); /* Center the text */
+              white-space: nowrap;
+              opacity: 0;
+              transition: opacity 0.3s, color 0.3s; /* Add transition for color */
+              color: white; /* Default color */
+          }
+  
+          .header-button:hover::after {
+              opacity: 1;
+              color: white; /* Ensure text color is white on hover */
+          }
+          .user-list { 
+              width: var(--left-chat-width);
+              height: 100%;
+              background-color: var(--bg-color);
+              position: fixed;
+              top: var(--header-height);
+              left: 0;
+              border-right: 1px solid #ccc;
+              box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+              display: flex;
+              flex-direction: column;
+              z-index: 2;
+              overflow: hidden;
+          }
+          .user { padding: 10px; cursor: pointer; }
+          .user:hover { background: #0056b3; }
+  
+          .dashboard-container {
+              position: absolute;
+              top: 125px;
+              left: 275px;
+              right: 100px;
+              bottom: 50px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 1;
+          }
+          .main-container { 
+                  background: var(--bg-color);
+                  border-radius: 25px;
+                  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                  width: 100%;
+                  height: 100%;
+                  padding: 20px;
+                  text-align: center;
+                  overflow-y: auto;
+                  transition: margin-left 0.5s;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 10px;
+          }
+          .chat-container {
+              flex: 1;
+              overflow-y: auto;
+              padding: 10px;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+          }
+  
+          .chat-container::-webkit-scrollbar {
+              width: 8px;
+          }
+  
+          .chat-container::-webkit-scrollbar-thumb {
+              background-color: #ccc;
+              border-radius: 4px;
+          }
+  
+          .chat-container::-webkit-scrollbar-track {
+              background-color: #f0f0f0;
+          }
+  
+  
+          .chat-header { display: flex; align-items: center; background: #007bff; color: white; padding: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+          .chat-header img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer; }
+          .chat-header img:hover { transform: scale(1.1); transition: 0.3s; }
+          .chat-header-name { flex: 1; font-size: 20px; font-weight: bold; }
+          .upload-container { display: none; position: absolute; top: 50px; left: 10px; background: white; box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 5px; }
+          .upload-container img { width: 100%; height: auto; }
+          .upload-container button { margin-top: 5px; display: block; width: 100%; background: #007bff; color: white; border: none; border-radius: 3px; padding: 5px; cursor: pointer; }
+          .upload-container button:hover { background: #0056b3; }
+          .date-stamp { text-align: center; margin: 10px 0; font-weight: bold; color: gray; }
+          .messages { flex: 1; padding: 20px; overflow-y: auto; background: white; }
+          .message { margin-bottom: 10px; position: relative; display: flex; }
+          .message.sent { justify-content: flex-end; }
+          .message.received { justify-content: flex-start; }
+          .message-content { padding: 10px; background: #f0f0f0; border-radius: 5px; max-width: 70%; }
+          .message.sent .message-content { background: #007bff; color: white; }
+          .timestamp { font-size: 11px; color: #555; margin-top: 5px; text-align: right; }
+          .status { font-size: 12px; align-self: center; margin-left: 5px; }
+          .status.single { color: gray; }
+          .status.delivered { color: green; }
+          .status.read { color: blue; }
+          .input-container { 
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-top: auto;
+              padding-top: 10px;
+              border-top: 1px solid #ccc;
+              border-radius: 25px;
+              padding: 10px;
+              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          }
+          input { 
+              flex: 1;
+              border: none;
+              border-radius: 20px;
+              padding: 10px 15px;
+              font-size: 16px;
+              outline: none;        
+          }
+          button { 
+              background-color: blue;
+              color: white;
+              border: none;
+              border-radius: 20px;
+              padding: 10px 20px;
+              font-size: 16px;
+              margin-left: 10px;
+              cursor: pointer;
+              transition: background-color 0.3s;
+          }
+          button:hover { background: #0056b3; }
+      </style>
+  </head>
+  <body>
+  
+      <div class="background-blur"></div>
+      <div class="header-container">
+      < Centered menu options -->
+          <!-- Right-aligned buttons -->
+          <!-- <div class="header-buttons">
+              <button class="header-button" data-hover="About"><span class="material-icons">alternate_email</span></button>
+              <button class="header-button" data-hover="Settings"><span class="material-icons">settings</span></button>
+              <button class="header-button" data-hover="User"><span class="material-icons">person</span></button>
+          </div>
+      </div>
+      <div class="user-list">
+          <h3>Users</h3>
+          {% for user in users %}
+          <div class="user" onclick="startChat('{{ user.username }}')">{{ user.username }}</div>
+          {% endfor %}
+      </div>
+      <div class="dashboard-container">
+          <div class="main-container" id="mainContainer">
+              <div class="chat-container">
+                  <div class="chat-header">
+                      <img src="default-profile.png" alt="Profile" id="profileImage" onclick="toggleUploadContainer()">
+                      <span class="chat-header-name" id="chatHeaderName">Chat</span>
+                      <div class="upload-container" id="uploadContainer">
+                          <img src="default-profile.png" alt="Expanded Profile" id="expandedImage">
+                          <input type="file" id="uploadInput" accept="image/*" onchange="changeProfileImage(event)">
+                          <button onclick="document.getElementById('uploadInput').click()">Upload Image</button>
+                      </div>
+                  </div>
+                  <div class="messages" id="messages"></div>
+                  <div class="input-container">
+                      <input type="text" id="messageInput" placeholder="Type your message...">
+                      <button onclick="sendMessage()">Send</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+  
+      <script>
+          let currentUser = '{{ session["username"] }}';
+          let currentChatUser = null;
+          let lastDate = null;
+  
+          function formatDate(date) {
+              const today = new Date();
+              const yesterday = new Date();
+              yesterday.setDate(today.getDate() - 1);
+  
+              if (date.toDateString() === today.toDateString()) return 'Today';
+              if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+              return date.toLocaleDateString('en-GB');
+          }
+  
+          function formatTimeIST(timestamp) {
+              const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' };
+              return new Date(timestamp).toLocaleTimeString('en-US', options);
+          }
+  
+          function startChat(user) {
+              currentChatUser = user;
+              document.getElementById('chatHeaderName').textContent = user;
+              document.getElementById('messages').innerHTML = '';
+              lastDate = null;
+              fetch(`/get_conversation?receiver=${user}`)
+                  .then(res => res.json())
+                  .then(data => {
+                      const messagesContainer = document.getElementById('messages');
+                      data.forEach(msg => {
+                          const msgDate = new Date(msg.timestamp);
+                          const formattedDate = formatDate(msgDate);
+  
+                          if (lastDate !== formattedDate) {
+                              const dateElement = document.createElement('div');
+                              dateElement.className = 'date-stamp';
+                              dateElement.textContent = formattedDate;
+                              messagesContainer.appendChild(dateElement);
+                              lastDate = formattedDate;
+                          }
+  
+                          const messageElement = document.createElement('div');
+                          messageElement.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+  
+                          const contentElement = document.createElement('span');
+                          contentElement.className = 'message-content';
+                          contentElement.textContent = msg.content;
+  
+                          const timestampElement = document.createElement('div');
+                          timestampElement.className = 'timestamp';
+                          timestampElement.textContent = formatTimeIST(msg.timestamp);
+  
+                          contentElement.appendChild(timestampElement);
+  
+                          if (msg.sender === currentUser) {
+                              const statusElement = document.createElement('span');
+                              statusElement.className = 'status';
+  
+                              // Mocked status for illustration (update with real data as needed)
+                              if (msg.status === 'sent') {
+                                  statusElement.classList.add('single');
+                                  statusElement.textContent = '✔';
+                              } else if (msg.status === 'delivered') {
+                                  statusElement.classList.add('delivered');
+                                  statusElement.textContent = '✔✔';
+                              } else if (msg.status === 'read') {
+                                  statusElement.classList.add('read');
+                                  statusElement.textContent = '✔✔';
+                              }
+  
+                              messageElement.appendChild(statusElement);
+                          }
+  
+                          messageElement.appendChild(contentElement);
+                          messagesContainer.appendChild(messageElement);
+                      });
+                  });
+          }
+  
+          function sendMessage() {
+              const messageInput = document.getElementById('messageInput');
+              const message = messageInput.value;
+              if (!message || !currentChatUser) return;
+  
+              fetch('/send_message', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ receiver: currentChatUser, message })
+              }).then(() => {
+                  const messagesContainer = document.getElementById('messages');
+  
+                  const messageElement = document.createElement('div');
+                  messageElement.className = 'message sent';
+  
+                  const contentElement = document.createElement('span');
+                  contentElement.className = 'message-content';
+                  contentElement.textContent = message;
+  
+                  const timestampElement = document.createElement('div');
+                  timestampElement.className = 'timestamp';
+                  timestampElement.textContent = formatTimeIST(Date.now());
+  
+                  contentElement.appendChild(timestampElement);
+  
+                  const statusElement = document.createElement('span');
+                  statusElement.className = 'status single';
+                  statusElement.textContent = '✔';
+  
+                  messageElement.appendChild(contentElement);
+                  messageElement.appendChild(statusElement);
+  
+                  messagesContainer.appendChild(messageElement);
+                  messageInput.value = '';
+                  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              });
+          }
+  
+          function changeProfileImage(event) {
+              const file = event.target.files[0];
+              if (file) {
+                  const reader = new FileReader();
+                  reader.onload = function (e) {
+                      const newImage = e.target.result;
+                      document.getElementById('profileImage').src = newImage;
+                      document.getElementById('expandedImage').src = newImage;
+  
+                      // You may want to send the image to the server to save it for the user
+                      fetch('/update_profile_image', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ image: newImage })
+                      });
+                  };
+                  reader.readAsDataURL(file);
+              }
+          }
+  
+          function toggleUploadContainer() {
+              const uploadContainer = document.getElementById('uploadContainer');
+              uploadContainer.style.display = uploadContainer.style.display === 'none' ? 'block' : 'none';
+          }
+      </script>
+  </body>
+  </html>
+   
+    --> 
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>Chat</title>
+    <style>
+        :root {
+            --bg-color: rgba(255, 255, 255, 0.8);
+            --border-radius: 100px;
+            --font-family: Arial, sans-serif;
+            --header-height: 75px;
+            --left-chat-width: 225px;
+            --button-hover-width: 100px; /* Adjust to your desired width */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-family);
+        }
+
+        .background-blur {
+            background-image: url("{{ url_for('static', filename='images/By Design.jpg') }}");;
+            background-size: cover;
+            background-position: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            filter: blur(10px);
+            z-index: -1;
+        }
+
+        .header-container {
+            width: 100%;
+            height: var(--header-height);
+            background-color: var(--bg-color);
+            border-bottom-right-radius: var(--border-radius);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end; /* Align items to the right */
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            padding-right: 20px; /* Add padding to the right */
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            margin-right: 20px; /* Add margin to the right */
+        }
+
+        .header-button {
+            width: 40px;
+            height: 40px;
+            background-color: #fff;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: width 0.3s, border-radius 0.3s, padding 0.3s, background-color 0.3s, color 0.3s;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            color: #000; /* Default text color */
+        }
+
+        .header-button:hover {
+            width: var(--button-hover-width);
+            border-radius: 20px;
+            padding: 0 20px;
+            background-color: blue; /* Change background color to blue on hover */
+            color: white; /* Change text color to white on hover */
+        }
+
+        .header-button span {
+            font-size: 24px;
+            transition: opacity 0.3s;
+        }
+
+        .header-button:hover span {
+            opacity: 0; /* Hide the icon on hover */
+        }
+
+        .header-button::after {
+            content: attr(data-hover);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%); /* Center the text */
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s, color 0.3s; /* Add transition for color */
+            color: white; /* Default color */
+        }
+
+        .header-button:hover::after {
+            opacity: 1;
+            color: white; /* Ensure text color is white on hover */
+        }
+
+        /* User overlay */
+        .user-overlay {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 30px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            width: 250px;
+            height: 250px;
+            z-index: 1000;
+        }
+
+        /* Active overlay */
+        .user-overlay.active {
+            display: block;
+        }
+
+        /* User logo container */
+        .user-logo-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+
+        .user-logo {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #ddd;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            border: 2px solid #ccc;
+        }
+
+        /* Camera button */
+        .camera-button {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: black;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            padding: 3px;
+            cursor: pointer;
+        }
+
+        .camera-button .material-icons {
+            font-size: 16px;
+        }
+
+        /* Greeting text */
+        #greetingText {
+            font-size: 18px;
+            margin-top: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Action buttons */
+        .user-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .change-password-button {
+            width: 300px;
+            height:45px;
+            font-size: 13px;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .logout-button {
+            width: 300px;
+            height: 45px;
+            font-size: 13px;
+            padding: 10px;
+            background-color: #ff4d4d;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .user-button:hover + .user-overlay,
+        .user-overlay:hover {
+            display: block;
+        }
+        .user-list { 
+            width: var(--left-chat-width);
+            height: 100%;
+            background-color: var(--bg-color);
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            border-right: 1px solid #ccc;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+            overflow: hidden;
+        }
+        .user { padding: 10px; cursor: pointer; }
+        .user:hover { background: #0056b3; }
+
+        .dashboard-container {
+            position: absolute;
+            top: 125px;
+            left: 275px;
+            right: 100px;
+            bottom: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+        .main-container { 
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            overflow-y: auto;
+            transition: margin-left 0.5s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 0px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 0px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background-color: #f0f0f0;
+        }
+
+
+        .chat-header { 
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: rgb(233, 228, 228);
+            color: white;
+            position: relative;
+            border-radius: 30px; /* Capsule shape */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);;
+            outline: 0.5px solid grey;
+        }
+        .chat-header img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; cursor: pointer; }
+        .chat-header img:hover { transform: scale(1.1); transition: 0.3s; }
+        .chat-header-name { flex: 1; font-size: 20px; font-weight: bold; }
+        .upload-container { display: none; position: absolute; top: 50px; left: 10px; background: white; box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 5px; }
+        .upload-container img { width: 100%; height: auto; }
+        .upload-container button { margin-top: 5px; display: block; width: 100%; background: #007bff; color: white; border: none; border-radius: 3px; padding: 5px; cursor: pointer; }
+        .upload-container button:hover { background: #0056b3; }
+        .date-stamp { text-align: center; margin: 10px 0; font-weight: bold; color: gray; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; background: white; }
+        .message { margin-bottom: 10px; position: relative; display: flex; }
+        .message.sent { justify-content: flex-end; }
+        .message.received { justify-content: flex-start; }
+        .message-content { padding: 10px; background: #f0f0f0; border-radius: 5px; max-width: 70%; }
+        .message.sent .message-content { background: #007bff; justify-content: flex-start white; }
+        .timestamp { font-size: 11px; color: #555; margin-top: 5px; text-align: right; }
+        .status { font-size: 12px; align-self: center; margin-left: 5px; }
+        .status.single { color: gray; }
+        .status.delivered { color: green; }
+        .status.read { color: blue; }
+        .input-container { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            border-radius: 25px;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        input { 
+            flex: 1;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 16px;
+            outline: none;        
+        }
+        button { 
+            background-color: blue;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="background-blur"></div>
+    <div class="header-container">
+        <div class="header-buttons">
+            <button class="header-button" data-hover="About">
+                <span class="material-icons">alternate_email</span>
+            </button>
+            <button class="header-button" data-hover="Settings">
+                <span class="material-icons">settings</span>
+            </button>
+            <button class="header-button user-button" data-hover="User">
+                <span class="material-icons">person</span>
+            </button>
+            <!-- User Overlay -->
+            <div class="user-overlay" id="userOverlay">
+                <div class="user-info">
+                    <!-- User Logo with Camera -->
+                    <div class="user-logo-container">
+                        <div class="user-logo" id="profileImage" onclick="zoomProfileImage()"></div>
+                        <button class="camera-button" onclick="triggerProfileImageUpload()">
+                            <span class="material-icons">camera_alt</span>
+                        </button>
+                    </div>
+                    <!-- Greeting -->
+                    <p id="greetingText">Hi, {{ session['username'] }}</p>
+                </div>
+                <!-- Action Buttons -->
+                <div class="user-actions">
+                    <button class="change-password-button" onclick="changePassword()">Change Password</button>
+                    <button class="logout-button" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="user-list">
+        <h3>Users</h3>
+        {% for user in users %}
+        <div class="user" onclick="startChat('{{ user.username }}')">{{ user.username }}</div>
+        {% endfor %}
+    </div>
+    <div class="dashboard-container">
+        <div class="main-container" id="mainContainer">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <img src="default-profile.png" alt="Profile" id="profileImage" onclick="toggleUploadContainer()">
+                    <span class="chat-header-name" id="chatHeaderName">Chat</span>
+                    <div class="upload-container" id="uploadContainer">
+                        <img src="default-profile.png" alt="Expanded Profile" id="expandedImage">
+                        <input type="file" id="uploadInput" accept="image/*" onchange="changeProfileImage(event)">
+                        <button onclick="document.getElementById('uploadInput').click()">Upload Image</button>
+                    </div>
+                </div>
+                <div class="messages" id="messages"></div>
+                <div class="input-container">
+                    <input type="text" id="messageInput" placeholder="Type your message...">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = '{{ session["username"] }}';
+        let currentChatUser = null;
+        let lastDate = null;
+
+        let chatRefreshInterval = null; // Declare global variable to store interval
+
+        function startChat(user) {
+            currentChatUser = user;
+            document.getElementById('chatHeaderName').textContent = user;
+            document.getElementById('messages').innerHTML = '';
+            lastDate = null;
+
+            // **Clear any previous interval before setting a new one**
+            if (chatRefreshInterval) {
+                clearInterval(chatRefreshInterval);
+            }
+
+            // **Fetch messages immediately**
+            loadConversation(user);
+
+            // **Set auto-refresh every 5 seconds**
+            chatRefreshInterval = setInterval(() => {
+                loadConversation(user);
+            }, 5000);
+        }
+
+        function loadConversation(user) {
+            fetch(`/get_conversation?receiver=${user}`)
+                .then(res => res.json())
+                .then(data => {
+                    const messagesContainer = document.getElementById('messages');
+                    messagesContainer.innerHTML = ''; // Clear existing messages before updating
+
+                    let lastDate = null;
+                    data.forEach(msg => {
+                        const msgDate = new Date(msg.timestamp);
+                        const formattedDate = formatDate(msgDate);
+
+                        if (lastDate !== formattedDate) {
+                            const dateElement = document.createElement('div');
+                            dateElement.className = 'date-stamp';
+                            dateElement.textContent = formattedDate;
+                            messagesContainer.appendChild(dateElement);
+                            lastDate = formattedDate;
+                        }
+
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+
+                        const contentElement = document.createElement('span');
+                        contentElement.className = 'message-content';
+                        contentElement.textContent = msg.content;
+
+                        const timestampElement = document.createElement('div');
+                        timestampElement.className = 'timestamp';
+                        timestampElement.textContent = formatTimeIST(msg.timestamp);
+
+                        contentElement.appendChild(timestampElement);
+
+                        messageElement.appendChild(contentElement);
+                        messagesContainer.appendChild(messageElement);
+                    });
+
+                    // Auto-scroll to the bottom of the chat
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                });
+        }
+
+
+        function formatDate(date) {
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+
+            if (date.toDateString() === today.toDateString()) return 'Today';
+            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+            return date.toLocaleDateString('en-GB');
+        }
+
+        function formatTimeIST(timestamp) {
+            const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' };
+            return new Date(timestamp).toLocaleTimeString('en-US', options);
+        }
+
+        function startChat(user) {
+            currentChatUser = user;
+            document.getElementById('chatHeaderName').textContent = user;
+            document.getElementById('messages').innerHTML = '';
+            lastDate = null;
+            fetch(`/get_conversation?receiver=${user}`)
+                .then(res => res.json())
+                .then(data => {
+                    const messagesContainer = document.getElementById('messages');
+                    data.forEach(msg => {
+                        const msgDate = new Date(msg.timestamp);
+                        const formattedDate = formatDate(msgDate);
+
+                        if (lastDate !== formattedDate) {
+                            const dateElement = document.createElement('div');
+                            dateElement.className = 'date-stamp';
+                            dateElement.textContent = formattedDate;
+                            messagesContainer.appendChild(dateElement);
+                            lastDate = formattedDate;
+                        }
+
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'message ' + (msg.sender === currentUser ? 'sent' : 'received');
+
+                        const contentElement = document.createElement('span');
+                        contentElement.className = 'message-content';
+                        contentElement.textContent = msg.content;
+
+                        const timestampElement = document.createElement('div');
+                        timestampElement.className = 'timestamp';
+                        timestampElement.textContent = formatTimeIST(msg.timestamp);
+
+                        contentElement.appendChild(timestampElement);
+
+                        if (msg.sender === currentUser) {
+                            const statusElement = document.createElement('span');
+                            statusElement.className = 'status';
+
+                            // Mocked status for illustration (update with real data as needed)
+                            if (msg.status === 'sent') {
+                                statusElement.classList.add('single');
+                                statusElement.textContent = '✔';
+                            } else if (msg.status === 'delivered') {
+                                statusElement.classList.add('delivered');
+                                statusElement.textContent = '✔✔';
+                            } else if (msg.status === 'read') {
+                                statusElement.classList.add('read');
+                                statusElement.textContent = '✔✔';
+                            }
+
+                            messageElement.appendChild(statusElement);
+                        }
+
+                        messageElement.appendChild(contentElement);
+                        messagesContainer.appendChild(messageElement);
+                    });
+                });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();  // Trim to prevent empty spaces
+
+            if (!message || !currentChatUser) return;  // Prevent empty messages
+
+            fetch('/send_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiver: currentChatUser, content: message }) // Correct key names
+            })
+            .then(response => response.json())  
+            .then(data => {
+                if (data.message === "Message sent successfully") {
+                    messageInput.value = '';  // Clear input after sending
+
+                    // **Immediately update chat without waiting for refresh**
+                    appendMessage(currentUser, message, new Date().toISOString(), 'sent');
+
+                    // **Force refresh conversation**
+                    setTimeout(() => {
+                        loadConversation(currentChatUser);
+                    }, 500);
+                } else {
+                    console.error("Message sending failed:", data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        /**
+         * Appends a new message to the chat dynamically.
+         * @param {string} sender - The sender username.
+         * @param {string} content - The message text.
+         * @param {string} timestamp - The message timestamp.
+         * @param {string} type - 'sent' or 'received' to apply styling.
+         */
+        function appendMessage(sender, content, timestamp, type) {
+            const messagesContainer = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+
+            const contentElement = document.createElement('span');
+            contentElement.className = 'message-content';
+            contentElement.textContent = content;
+
+            const timestampElement = document.createElement('div');
+            timestampElement.className = 'timestamp';
+            timestampElement.textContent = formatTimeIST(timestamp);
+
+            contentElement.appendChild(timestampElement);
+            messageElement.appendChild(contentElement);
+
+            // **Show status only for sent messages**
+            if (type === 'sent') {
+                const statusElement = document.createElement('span');
+                statusElement.className = 'status single';
+                statusElement.textContent = '✔';  // Initially single tick
+                messageElement.appendChild(statusElement);
+            }
+
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;  // Auto-scroll
+        }
+
+        /**
+         * Change the profile image of the user.
+         * @param {Event} event
+         */
+         function changeProfileImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const newImage = e.target.result;
+
+                    // Update the displayed profile image
+                    document.getElementById('profileImage').style.backgroundImage = `url(${newImage})`;
+
+                    // Send the image to the server
+                    fetch('/update_profile_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: newImage }),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => console.log('Image uploaded successfully:', data))
+                        .catch((err) => console.error('Error uploading image:', err));
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        /**
+         * Zoom and display the profile image.
+         */
+        function zoomProfileImage() {
+            const profileImageContainer = document.getElementById('profileImage');
+            const zoomedImage = profileImageContainer.style.backgroundImage;
+
+            // Open the image in a modal or alert for now
+            if (zoomedImage) {
+                alert('Zoom feature: Displaying enlarged profile image.');
+                // For a modal, you can create a div element styled to display the image.
+            } else {
+                alert('No profile image available to zoom.');
+            }
+        }
+
+        /**
+         * Trigger the upload input for changing profile images.
+         */
+        function triggerProfileImageUpload() {
+            const profileImageInput = document.getElementById('profileImageInput');
+            profileImageInput.click();
+        }
+
+        /**
+         * Toggle the visibility of the user overlay.
+         */
+        function toggleOverlay() {
+            const userOverlay = document.getElementById('userOverlay');
+            userOverlay.classList.toggle('active');
+        }
+
+        /**
+         * Hide the user overlay.
+         */
+        function hideOverlay() {
+            const userOverlay = document.getElementById('userOverlay');
+            if (userOverlay.classList.contains('active')) {
+                userOverlay.classList.remove('active');
+            }
+        }
+
+        /**
+         * Log out the user and redirect to the login page.
+         */
+        function logout() {
+            fetch('/logout', {
+                method: 'POST',
+            })
+                .then((response) => {
+                    if (response.redirected) {
+                        // If the server sends a redirect, follow it
+                        window.location.href = response.url;
+                    } else {
+                        window.location.href = '/';
+                    }
+                })
+                .catch((err) => console.error('Logout error:', err));
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const userButton = document.querySelector('.user-button');
+            const userOverlay = document.getElementById('userOverlay');
+            const profileImage = document.getElementById('profileImage');
+
+            // Toggle overlay visibility on button click
+            userButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleOverlay();
+            });
+
+            // Close overlay when clicking outside
+            document.addEventListener('click', () => {
+                hideOverlay();
+            });
+
+            // Prevent overlay from closing when clicking inside the overlay
+            userOverlay.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+
+            // Zoom profile image on click
+            profileImage.addEventListener('click', zoomProfileImage);
+
+            // **Auto-refresh chat every 1 seconds**
+            setInterval(() => {
+                if (currentChatUser) {
+                    loadConversation(currentChatUser);
+                }
+            }, 1000); // Fetch messages every 1 seconds
+        });
+
+    </script>
+</body>
+</html>
