@@ -1,4 +1,4 @@
-# nixpacls.toml
+# nixpacks.toml
 
 [start]
-cmd = "gunicorn app:chat"
+cmd = "gunicorn --log-level debug -w 4 -b 0.0.0.0:8080 chat:app"
