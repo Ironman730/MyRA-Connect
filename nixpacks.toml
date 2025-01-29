@@ -1,0 +1,4 @@
+# nixpacls.toml
+
+[start]
+cmd = "guincorn app:app"
