@@ -1,4 +1,4 @@
 # nixpacls.toml
 
 [start]
-cmd = "gunicorn app:app"
+cmd = "gunicorn app:chat"
