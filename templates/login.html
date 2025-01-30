@@ -7,7 +7,7 @@
     <style>
         /* General Styles */
             body {
-                background-image: urlurl("{{ url_for('static', filename='images/Picture3.png') }}");
+                background-image: url("{{ url_for('static', filename='images/Picture3.png') }}");
                 background-size: cover;
                 background-position: center;
                 display: flex;
@@ -268,7 +268,7 @@
     <div class="main-container">
         <!-- Login Container -->
         <div class="login-container" id="loginPage">
-            <img src="{{ url_for('static', filename='images/By Qlogo.png') }}" alt="Logo" class="logo">
+            <img src="{{ url_for('static', filename='images/Qlogo.png') }}" alt="Logo" class="logo">
             <form id="loginForm">
                 <h2>Login</h2>
                 <label for="username">Username or Email</label>

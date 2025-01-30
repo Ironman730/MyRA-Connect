@@ -46,7 +46,7 @@ def setup():
 @app.route('/')
 def index():
     if 'username' in session:
-        return redirect(url_for('chat.html'))
+        return redirect(url_for('chat'))
     return render_template('login.html')
 
 # Login Route (Handles both Form and JSON Requests)
@@ -80,6 +80,7 @@ def logout():
 
 # Chat Page
 @app.route('/chat.html')
+
 def chat():
     if 'username' not in session:
         return redirect(url_for('index'))
