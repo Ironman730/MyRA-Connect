@@ -11,13 +11,13 @@ app.secret_key = 'supersecretkey'
 
 db = SQLAlchemy(app)
 
-
+# User Model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(80), nullable=False)
-    #profile_picture = db.Column(db.String(120), default='default.png')  # Default profile picture
 
+# Message Model
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -42,30 +42,44 @@ def setup():
             db.session.add(User(username=user['username'], password=user['password']))
     db.session.commit()
 
-# Routes
+# Home Route
 @app.route('/')
 def index():
     if 'username' in session:
-        return redirect(url_for('chat'))
+        return redirect(url_for('chat.html'))
     return render_template('login.html')
 
+# Login Route (Handles both Form and JSON Requests)
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    if request.is_json:  # JSON Request (AJAX, Fetch)
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+    else:  # Form Request (Traditional HTML form)
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+    print(f"Received login data: username={username}, password={password}")
+
+    if not username or not password:
+        return jsonify({"error": "Missing username or password"}), 400
+
     user = User.query.filter_by(username=username, password=password).first()
     if user:
         session['username'] = user.username
-        return redirect(url_for('chat'))
-    return render_template('login.html', error="Invalid username or password")
+        return jsonify({"message": "Login successful"}), 200
+    
+    return jsonify({"error": "Invalid username or password"}), 401
 
+# Logout Route
 @app.route('/logout', methods=['POST'])
 def logout():
-    if 'username' in session:
-        session.pop('username', None)
+    session.pop('username', None)
     return redirect(url_for('index'))
 
-@app.route('/chat')
+# Chat Page
+@app.route('/chat.html')
 def chat():
     if 'username' not in session:
         return redirect(url_for('index'))
@@ -73,29 +87,7 @@ def chat():
     current_user = User.query.filter_by(username=session['username']).first()
     return render_template('chat.html', users=users, current_user=current_user)
 
-# @app.route('/upload_profile_picture', methods=['POST'])
-# def upload_profile_picture():
-#     if 'username' not in session:
-#         return jsonify({"error": "Unauthorized"}), 401
-
-#     user = User.query.filter_by(username=session['username']).first()
-#     if not user:
-#         return jsonify({"error": "User not found"}), 404
-
-#     if 'profile_picture' not in request.files:
-#         return jsonify({"error": "No file uploaded"}), 400
-
-#     file = request.files['profile_picture']
-#     if file:
-#         filename = f"{user.id}_{file.filename}"
-#         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-#         file.save(filepath)
-#         user.profile_picture = filename
-#         db.session.commit()
-#         return jsonify({"message": "Profile picture updated successfully", "profile_picture": filename})
-
-#     return jsonify({"error": "Failed to upload profile picture"}), 500
-
+# Get Conversation
 @app.route('/get_conversation', methods=['GET'])
 def get_conversation():
     if 'username' not in session:
@@ -127,6 +119,7 @@ def get_conversation():
         } for msg in messages
     ])
 
+# Send Message
 @app.route('/send_message', methods=['POST'])
 def send_message():
     if 'username' not in session:
@@ -145,14 +138,13 @@ def send_message():
     if not sender or not receiver:
         return jsonify({"error": "User not found"}), 404
 
-    # Store the message in the database
     message = Message(sender_id=sender.id, receiver_id=receiver.id, content=content)
     db.session.add(message)
     db.session.commit()
 
     return jsonify({"message": "Message sent successfully"}), 201
 
-
+# Signup Route
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.json
@@ -162,18 +154,14 @@ def signup():
     if not email or not password:
         return jsonify({"message": "Email and password are required"}), 400
 
-    # Ensure email and password are unique
     if User.query.filter_by(username=email).first():
         return jsonify({"message": "Failed to register user"}), 201  # Silent rejection
 
-    # Add the new user to the database
     new_user = User(username=email, password=password)
     db.session.add(new_user)
     db.session.commit()
 
     return jsonify({"message": "User registered successfully"}), 201
-
-
 
 # Initialize database
 with app.app_context():

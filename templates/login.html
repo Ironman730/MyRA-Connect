@@ -7,7 +7,7 @@
     <style>
         /* General Styles */
             body {
-                background-image: url("{{ url_for('static', filename='images/Picture3.png') }}");
+                background-image: urlurl("{{ url_for('static', filename='images/Picture3.png') }}");
                 background-size: cover;
                 background-position: center;
                 display: flex;
@@ -268,8 +268,8 @@
     <div class="main-container">
         <!-- Login Container -->
         <div class="login-container" id="loginPage">
-            <img src="{{ url_for('static', filename='images/Qlogo.png') }}" alt="Logo" class="logo">
-            <form onsubmit="return handleLogin()">
+            <img src="{{ url_for('static', filename='images/By Qlogo.png') }}" alt="Logo" class="logo">
+            <form id="loginForm">
                 <h2>Login</h2>
                 <label for="username">Username or Email</label>
                 <input type="text" id="username" name="username" required>
@@ -299,13 +299,13 @@
                 <h2>Sign Up</h2>
                 <form id="signupForm">
                     <label for="signupEmail">Email</label>
-                    <input type="email" id="signupEmail" name="signupEmail" placeholder="Enter your email" required>
+                    <input type="email" id="signupEmail" name="signupEmail" required>
 
                     <label for="signupPassword">Password</label>
-                    <input type="password" id="signupPassword" name="signupPassword" placeholder="Create a password" required>
+                    <input type="password" id="signupPassword" name="signupPassword" required>
 
                     <label for="confirmPassword">Re-enter Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
 
                     <div id="passwordCriteria">
                         <p>Password must include:</p>
@@ -333,98 +333,84 @@
             <div class="bubble bubble5"></div>
         </div>
     </div>
+
     <script>
+        // Handle Login
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
 
-            // Handle Login
-            async function handleLogin(event) {
-                event.preventDefault();
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
 
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value;
+            if (response.ok) {
+                window.location.href = "chat.html";
+            } else {
+                const error = await response.json();
+                alert(error.message || "Invalid username or password");
+            }
+        }
 
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password }),
-                });
+        // Handle Sign-Up
+        async function handleSignUp(event) {
+            event.preventDefault();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
 
-                if (response.ok) {
-                    window.location.href = "chat.html"; // Replace with your actual chat page URL
-                } else {
-                    const error = await response.json();
-                    alert(error.message || "Invalid username or password");
-                }
+            if (password !== confirmPassword) {
+                alert("Passwords do not match.");
+                return;
             }
 
-            // Handle Sign-Up
-            async function handleSignUp(event) {
-                event.preventDefault();
+            const response = await fetch('/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
 
-                const email = document.getElementById('signupEmail').value.trim();
-                const password = document.getElementById('signupPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-
-                // Validate password confirmation
-                if (password !== confirmPassword) {
-                    alert("Passwords do not match. Please re-enter.");
-                    return false;
-                }
-
-                const response = await fetch('/signup', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email, password }),
-                });
-
-                if (response.ok) {
-                    alert("Sign-Up successful! Redirecting to the login page...");
-                    window.location.href = "/";
-                } else {
-                    const result = await response.json();
-                    alert(result.message || "Failed to sign up");
-                }
+            if (response.ok) {
+                alert("Sign-Up successful! Redirecting to the login page...");
+                window.location.href = "/";
+            } else {
+                const result = await response.json();
+                alert(result.message || "Failed to sign up");
             }
+        }
 
-            // Show password requirements in real time
-            function validatePasswordCriteria() {
-                const password = document.getElementById('signupPassword').value;
+        // Validate password criteria
+        function validatePasswordCriteria() {
+            const password = document.getElementById('signupPassword').value;
+            document.getElementById('lengthCriteria').style.color = password.length >= 8 ? "green" : "red";
+            document.getElementById('capitalCriteria').style.color = /[A-Z]/.test(password) ? "green" : "red";
+            document.getElementById('specialCriteria').style.color = /[@#$%*_-]/.test(password) ? "green" : "red";
+        }
 
-                document.getElementById('lengthCriteria').style.color =
-                    password.length >= 8 ? "green" : "red";
-                document.getElementById('capitalCriteria').style.color =
-                    /[A-Z]/.test(password) ? "green" : "red";
-                document.getElementById('specialCriteria').style.color =
-                    /[@#$%*_-]/.test(password) ? "green" : "red";
-            }
+        // Open and Close Sign-Up Modal
+        function openSignUpModal() {
+            document.getElementById('signupPage').classList.remove('hidden');
+            document.getElementById('signupPage').classList.add('visible');
+            document.getElementById('loginPage').classList.add('blurred');
+        }
 
-            // Open and Close Sign-Up Modal
-            function openSignUpModal() {
-                document.getElementById('signupPage').classList.remove('hidden');
-                document.getElementById('signupPage').classList.add('visible');
-                document.querySelector('.login-container').classList.add('blurred');
-            }
+        function closeSignUpModal() {
+            document.getElementById('signupPage').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('blurred');
+        }
 
-            function closeSignUpModal() {
-                document.getElementById('signupPage').classList.remove('visible');
-                document.getElementById('signupPage').classList.add('hidden');
-                document.querySelector('.login-container').classList.remove('blurred');
-            }
-
-            // Add Event Listeners
-            window.onload = () => {
-                document.querySelector('.signup-container a').addEventListener('click', openSignUpModal);
-                document.getElementById('closeSignup').addEventListener('click', closeSignUpModal);
-                document.getElementById('signupForm').addEventListener('submit', handleSignUp);
-                document.getElementById('loginForm').addEventListener('submit', handleLogin);
-                document.getElementById('signupPassword').addEventListener('input', validatePasswordCriteria);
-            };
-
-
-
+        // Event Listeners
+        window.onload = () => {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('signupForm').addEventListener('submit', handleSignUp);
+            document.getElementById('signupPassword').addEventListener('input', validatePasswordCriteria);
+            document.getElementById('openSignup').addEventListener('click', openSignUpModal);
+            document.getElementById('closeSignup').addEventListener('click', closeSignUpModal);
+        };
     </script>
 </body>
+
 </html>
